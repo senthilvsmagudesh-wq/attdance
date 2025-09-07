@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+
+{% block title %}{{ student.name }} - Student Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('hod_dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="breadcrumb-item">
+                        <a href="{{ url_for('class_details', class_id=student.class_id) }}">{{ class_obj.class_name }}</a>
+                    </li>
+                    <li class="breadcrumb-item active">{{ student.name }}</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <div class="student-avatar-large me-3">
+                        {{ student.name[0].upper() }}
+                    </div>
+                    <div>
+                        <h2 class="mb-1">{{ student.name }}</h2>
+                        <p class="text-muted mb-0">
+                            <i class="fas fa-id-card me-1"></i>{{ student.roll_number }} • 
+                            <i class="fas fa-chalkboard me-1"></i>{{ class_obj.class_name }}
+                        </p>
+                    </div>
+                </div>
+                <div class="text-end">
+                    <div class="attendance-percentage-large">
+                        <div class="percentage">{{ "%.1f"|format(stats.percentage) }}%</div>
+                        <div class="label">Overall Attendance</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Student Info Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="info-card bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="text-white mb-1">{{ stats.total_days }}</h3>
+                            <p class="text-white-50 mb-0">Total Days</p>
+                        </div>
+                        <div class="info-icon">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="info-card bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="text-white mb-1">{{ stats.present_days }}</h3>
+                            <p class="text-white-50 mb-0">Present Days</p>
+                        </div>
+                        <div class="info-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="info-card bg-danger">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="text-white mb-1">{{ stats.absent_days }}</h3>
+                            <p class="text-white-50 mb-0">Absent Days</p>
+                        </div>
+                        <div class="info-icon">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="info-card bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="text-dark mb-1">{{ stats.late_count }}</h3>
+                            <p class="text-dark mb-0">Late Arrivals</p>
+                        </div>
+                        <div class="info-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Attendance Performance -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="chart-card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-area text-primary me-2"></i>
+                            Attendance Trend (Last 30 Days)
+                        </h5>
+                        <div class="performance-indicator">
+                            {% if stats.percentage >= 90 %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-star me-1"></i>Excellent
+                            </span>
+                            {% elif stats.percentage >= 75 %}
+                            <span class="badge bg-warning">
+                                <i class="fas fa-exclamation-triangle me-1"></i>Good
+                            </span>
+                            {% else %}
+                            <span class="badge bg-danger">
+                                <i class="fas fa-warning me-1"></i>Needs Attention
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="attendanceTrendChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie text-success me-2"></i>
+                        Attendance Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="attendanceSummaryChart" height="250"></canvas>
+                    <div class="summary-stats mt-3">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="stat-mini text-success">
+                                    <div class="number">{{ stats.present_days }}</div>
+                                    <div class="label">Present</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-mini text-danger">
+                                    <div class="number">{{ stats.absent_days }}</div>
+                                    <div class="label">Absent</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-mini text-warning">
+                                    <div class="number">{{ stats.late_count }}</div>
+                                    <div class="label">Late</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Attendance History -->
+    <div class="row">
+        <div class="col-12">
+            <div class="history-card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history text-primary me-2"></i>
+                            Recent Attendance History
+                        </h5>
+                        <div class="history-controls">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-primary active" data-view="calendar">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" data-view="list">
+                                    <i class="fas fa-list"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Calendar View -->
+                    <div id="calendarView" class="attendance-calendar">
+                        <div class="calendar-grid">
+                            {% for day in daily_summary %}
+                            <div class="calendar-day {{ day.status }} {{ 'late' if day.is_late else '' }}" 
+                                 data-date="{{ day.date }}" 
+                                 title="{{ day.date }} - {{ day.status.title() }}{{ ' (Late)' if day.is_late else '' }}">
+                                <div class="day-number">{{ day.date.split('-')[2]|int }}</div>
+                                <div class="day-status">
+                                    {% if day.status == 'present' %}
+                                        {% if day.is_late %}
+                                        <i class="fas fa-clock text-warning"></i>
+                                        {% else %}
+                                        <i class="fas fa-check text-success"></i>
+                                        {% endif %}
+                                    {% else %}
+                                    <i class="fas fa-times text-danger"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <!-- List View -->
+                    <div id="listView" class="attendance-list" style="display: none;">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Day</th>
+                                        <th>Status</th>
+                                        <th>Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for day in daily_summary %}
+                                    <tr class="attendance-row {{ day.status }}">
+                                        <td>
+                                            <span class="fw-semibold">{{ day.date }}</span>
+                                        </td>
+                                        <td>
+                                            {% set date_obj = day.date|strptime('%Y-%m-%d') %}
+                                            {{ date_obj.strftime('%A') }}
+                                        </td>
+                                        <td>
+                                            {% if day.status == 'present' %}
+                                                {% if day.is_late %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-clock me-1"></i>Present (Late)
+                                                </span>
+                                                {% else %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check me-1"></i>Present
+                                                </span>
+                                                {% endif %}
+                                            {% else %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times me-1"></i>Absent
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {% if day.status == 'present' and day.is_late %}
+                                                Late arrival
+                                                {% elif day.status == 'present' %}
+                                                On time
+                                                {% else %}
+                                                Not present
+                                                {% endif %}
+                                            </small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Contact Information -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="contact-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-address-card text-primary me-2"></i>
+                        Contact Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="contact-item">
+                                <i class="fas fa-envelope me-2 text-muted"></i>
+                                <span>{{ student.email or 'Email not provided' }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="contact-item">
+                                <i class="fas fa-phone me-2 text-muted"></i>
+                                <span>{{ student.phone or 'Phone not provided' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+// Student Details functionality
+class StudentDetails {
+    constructor() {
+        this.dailySummary = {{ daily_summary|tojson }};
+        this.stats = {{ stats|tojson }};
+        this.init();
+    }
+    
+    init() {
+        this.initCharts();
+        this.bindEvents();
+    }
+    
+    initCharts() {
+        this.initTrendChart();
+        this.initSummaryChart();
+    }
+    
+    initTrendChart() {
+        const ctx = document.getElementById('attendanceTrendChart').getContext('2d');
+        
+        // Prepare data for trend chart
+        const labels = this.dailySummary.map(day => {
+            const date = new Date(day.date);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }).reverse();
+        
+        const data = this.dailySummary.map(day => {
+            return day.status === 'present' ? 1 : 0;
+        }).reverse();
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Attendance',
+                    data: data,
+                    borderColor: 'rgb(13, 110, 253)',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: data.map((value, index) => {
+                        const day = this.dailySummary[this.dailySummary.length - 1 - index];
+                        if (value === 1 && day.is_late) return '#ffc107';
+                        return value === 1 ? '#198754' : '#dc3545';
+                    }),
+                    pointBorderColor: 'white',
+                    pointBorderWidth: 2,
+                    pointRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1,
+                        ticks: {
+                            callback: function(value) {
+                                return value === 1 ? 'Present' : 'Absent';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const index = context.dataIndex;
+                                const day = this.dailySummary[this.dailySummary.length - 1 - index];
+                                let status = context.parsed.y === 1 ? 'Present' : 'Absent';
+                                if (context.parsed.y === 1 && day.is_late) {
+                                    status += ' (Late)';
+                                }
+                                return status;
+                            }.bind(this)
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    initSummaryChart() {
+        const ctx = document.getElementById('attendanceSummaryChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Present', 'Absent'],
+                datasets: [{
+                    data: [this.stats.present_days, this.stats.absent_days],
+                    backgroundColor: ['#198754', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label;
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} days (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    bindEvents() {
+        // View toggle
+        document.querySelectorAll('[data-view]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                this.toggleView(e.target.closest('button').getAttribute('data-view'));
+            });
+        });
+        
+        // Calendar day hover
+        document.querySelectorAll('.calendar-day').forEach(day => {
+            day.addEventListener('mouseenter', (e) => {
+                this.showDayTooltip(e);
+            });
+        });
+    }
+    
+    toggleView(view) {
+        const buttons = document.querySelectorAll('[data-view]');
+        const calendarView = document.getElementById('calendarView');
+        const listView = document.getElementById('listView');
+        
+        buttons.forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-view="${view}"]`).classList.add('active');
+        
+        if (view === 'calendar') {
+            calendarView.style.display = 'block';
+            listView.style.display = 'none';
+        } else {
+            calendarView.style.display = 'none';
+            listView.style.display = 'block';
+        }
+    }
+    
+    showDayTooltip(e) {
+        const day = e.target.closest('.calendar-day');
+        const date = day.getAttribute('data-date');
+        const title = day.getAttribute('title');
+        
+        // You can implement a custom tooltip here
+        day.title = title;
+    }
+}
+
+// Initialize student details
+document.addEventListener('DOMContentLoaded', function() {
+    new StudentDetails();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,543 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-chart-bar text-primary me-2"></i>
+                        Reports & Analytics
+                    </h2>
+                    <p class="text-muted mb-0">Generate comprehensive attendance reports</p>
+                </div>
+                <div class="text-end">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-success" id="downloadImage">
+                            <i class="fas fa-camera me-1"></i>Download as Image
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Report Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="filters-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter text-primary me-2"></i>Report Filters
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="reportFilters">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label for="reportDate" class="form-label">Date</label>
+                                <input type="date" class="form-control" id="reportDate" value="{{ date_str }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label for="reportType" class="form-label">Report Type</label>
+                                <select class="form-select" id="reportType">
+                                    <option value="department">Department Summary</option>
+                                    <option value="class">Class-wise Report</option>
+                                    <option value="student">Student Report</option>
+                                    <option value="latecomer">Latecomer Report</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="classFilter" class="form-label">Class (Optional)</label>
+                                <select class="form-select" id="classFilter">
+                                    <option value="">All Classes</option>
+                                    {% for class_data in report_data.classes %}
+                                    <option value="{{ class_data.class_id }}">{{ class_data.class_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="formatType" class="form-label">Export Format</label>
+                                <select class="form-select" id="formatType">
+                                    <option value="pdf">PDF</option>
+                                    <option value="excel">Excel</option>
+                                    <option value="image">Image</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-sync-alt me-1"></i>Generate Report
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary ms-2" id="resetFilters">
+                                    <i class="fas fa-undo me-1"></i>Reset
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Report Dashboard -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="report-stat-card bg-primary">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="text-white mb-1">{{ report_data.classes|length }}</h3>
+                            <p class="text-white-50 mb-0">Total Classes</p>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-chalkboard"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="report-stat-card bg-success">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="text-white mb-1">{{ report_data.total_students }}</h3>
+                            <p class="text-white-50 mb-0">Total Students</p>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="report-stat-card bg-info">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="text-white mb-1">{{ "%.1f"|format(report_data.overall_percentage) }}%</h3>
+                            <p class="text-white-50 mb-0">Overall Attendance</p>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-percentage"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="report-stat-card bg-warning">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            {% set total_late = report_data.classes|sum(attribute='late') %}
+                            <h3 class="text-dark mb-1">{{ total_late }}</h3>
+                            <p class="text-dark mb-0">Latecomers</p>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Section -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="chart-card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-column text-primary me-2"></i>
+                            Class-wise Attendance Comparison
+                        </h5>
+                        <div class="chart-controls">
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="downloadChart">
+                                <i class="fas fa-download me-1"></i>Download Chart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="classComparisonChart" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-chart-pie text-success me-2"></i>
+                        Attendance Distribution
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="distributionChart" height="300"></canvas>
+                    <div class="distribution-stats mt-3">
+                        <div class="row">
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="fw-bold text-success">{{ report_data.total_present }}</div>
+                                    <small class="text-muted">Present</small>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-center">
+                                    <div class="fw-bold text-danger">{{ report_data.total_students - report_data.total_present }}</div>
+                                    <small class="text-muted">Absent</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Detailed Report Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="report-table-card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-table text-primary me-2"></i>
+                            Detailed Report - {{ date_str }}
+                        </h5>
+                        <div class="table-actions">
+                            <button type="button" class="btn btn-sm btn-success" id="exportTable">
+                                <i class="fas fa-file-excel me-1"></i>Export Table
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="reportTable">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Total Students</th>
+                                    <th>Present</th>
+                                    <th>Absent</th>
+                                    <th>Latecomers</th>
+                                    <th>Attendance %</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for class_data in report_data.classes %}
+                                <tr class="class-row">
+                                    <td>
+                                        <div class="class-info">
+                                            <div class="fw-semibold">{{ class_data.class_name }}</div>
+                                            <small class="text-muted">{{ class_data.class_id }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ class_data.total_students }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success">{{ class_data.present }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-danger">{{ class_data.absent }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">{{ class_data.late }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="progress-container">
+                                            <div class="progress" style="height: 20px;">
+                                                <div class="progress-bar {{ 'bg-success' if class_data.percentage >= 90 else 'bg-warning' if class_data.percentage >= 75 else 'bg-danger' }}" 
+                                                     role="progressbar" 
+                                                     style="width: {{ class_data.percentage }}%">
+                                                    <small class="fw-bold">{{ "%.1f"|format(class_data.percentage) }}%</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if class_data.percentage >= 90 %}
+                                        <span class="badge bg-success">Excellent</span>
+                                        {% elif class_data.percentage >= 75 %}
+                                        <span class="badge bg-warning">Good</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Needs Attention</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('class_details', class_id=class_data.class_id, date=date_str) }}" 
+                                               class="btn btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-success export-class" 
+                                                    data-class-id="{{ class_data.class_id }}" title="Export Class Data">
+                                                <i class="fas fa-download"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script>
+// Reports functionality
+class ReportsManager {
+    constructor() {
+        this.reportData = {{ report_data|tojson }};
+        this.init();
+    }
+    
+    init() {
+        this.initCharts();
+        this.bindEvents();
+    }
+    
+    initCharts() {
+        this.initClassComparisonChart();
+        this.initDistributionChart();
+    }
+    
+    initClassComparisonChart() {
+        const ctx = document.getElementById('classComparisonChart').getContext('2d');
+        
+        const labels = this.reportData.classes.map(cls => cls.class_name);
+        const data = this.reportData.classes.map(cls => cls.percentage);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Attendance %',
+                    data: data,
+                    backgroundColor: data.map(value => {
+                        if (value >= 90) return 'rgba(25, 135, 84, 0.8)';
+                        if (value >= 75) return 'rgba(255, 193, 7, 0.8)';
+                        return 'rgba(220, 53, 69, 0.8)';
+                    }),
+                    borderColor: data.map(value => {
+                        if (value >= 90) return 'rgb(25, 135, 84)';
+                        if (value >= 75) return 'rgb(255, 193, 7)';
+                        return 'rgb(220, 53, 69)';
+                    }),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'Attendance: ' + context.parsed.y.toFixed(1) + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    initDistributionChart() {
+        const ctx = document.getElementById('distributionChart').getContext('2d');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Present', 'Absent'],
+                datasets: [{
+                    data: [
+                        this.reportData.total_present,
+                        this.reportData.total_students - this.reportData.total_present
+                    ],
+                    backgroundColor: ['#198754', '#dc3545'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label;
+                                const value = context.parsed;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    bindEvents() {
+        document.getElementById('downloadImage').addEventListener('click', () => {
+            this.downloadReportAsImage();
+        });
+    }
+
+    downloadReportAsImage() {
+        const printWindow = window.open('/print-report', '_blank');
+        printWindow.onload = function() {
+            html2canvas(printWindow.document.body).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'daily_attendance_report.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                printWindow.close();
+            });
+        }
+    }
+    
+    generateReport() {
+        const filters = {
+            date: document.getElementById('reportDate').value,
+            type: document.getElementById('reportType').value,
+            class: document.getElementById('classFilter').value,
+            format: document.getElementById('formatType').value
+        };
+        
+        // Show loading state
+        this.showLoading();
+        
+        // Navigate to reports with filters
+        const params = new URLSearchParams(filters);
+        window.location.href = `{{ url_for('reports') }}?${params.toString()}`;
+    }
+    
+    resetFilters() {
+        document.getElementById('reportDate').value = '{{ date_str }}';
+        document.getElementById('reportType').value = 'department';
+        document.getElementById('classFilter').value = '';
+        document.getElementById('formatType').value = 'pdf';
+    }
+    
+    exportTable() {
+        // Convert table to CSV
+        const table = document.getElementById('reportTable');
+        let csv = '';
+        
+        // Headers
+        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+        csv += headers.join(',') + '\n';
+        
+        // Rows
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const cells = Array.from(row.querySelectorAll('td')).map(td => {
+                return '"' + td.textContent.trim().replace(/"/g, '""') + '"';
+            });
+            csv += cells.join(',') + '\n';
+        });
+        
+        // Download
+        this.downloadCSV(csv, 'attendance_report.csv');
+    }
+    
+    downloadChart() {
+        const canvas = document.getElementById('classComparisonChart');
+        const link = document.createElement('a');
+        link.download = 'attendance_chart.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    }
+
+    printReport() {
+        const printWindow = window.open('/print-report', '_blank');
+        printWindow.onload = function() {
+            printWindow.print();
+        }
+    }
+    
+    exportClassData(classId) {
+        this.showToast(`Exporting data for class ${classId}...`, 'info');
+        
+        // Implementation for exporting individual class data
+        setTimeout(() => {
+            this.showToast('Class data exported!', 'success');
+        }, 1500);
+    }
+    
+    downloadCSV(content, filename) {
+        const blob = new Blob([content], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        window.URL.revokeObjectURL(url);
+    }
+    
+    showLoading() {
+        // Implementation for showing loading state
+        console.log('Loading...');
+    }
+    
+    showToast(message, type = 'info') {
+        // Create a toast notification
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type} toast-notification`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 100);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => document.body.removeChild(toast), 300);
+        }, 3000);
+    }
+}
+
+// Initialize reports manager
+document.addEventListener('DOMContentLoaded', function() {
+    new ReportsManager();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Staff Dashboard - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-tachometer-alt text-primary me-2"></i>
+                        Staff Dashboard
+                    </h2>
+                    <p class="text-muted mb-0">Welcome back, {{ user.name }}</p>
+                </div>
+                <div class="text-end">
+                    <p class="mb-0 text-muted">Today's Date</p>
+                    <h5 class="mb-0" id="currentDate">{{ today }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ class_summaries|length }}</h3>
+                    <p>Assigned Classes</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ class_summaries|selectattr('locked')|list|length }}</h3>
+                    <p>Completed Today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ class_summaries|sum(attribute='late') }}</h3>
+                    <p>Latecomers Today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card bg-info">
+                <div class="stat-icon">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="stat-content">
+                    {% set avg_percentage = (class_summaries|sum(attribute='percentage')/class_summaries|length) if class_summaries else 0 %}
+                    <h3>{{ "%.1f"|format(avg_percentage) }}%</h3>
+                    <p>Average Attendance</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Classes Grid -->
+    <!-- Mark Attendance Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-clipboard-check mr-1"></i>
+            Mark Attendance
+        </div>
+        <div class="card-body">
+            <form id="markAttendanceForm" class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label for="classSelect" class="form-label">Select Class</label>
+                    <select class="form-select" id="classSelect" name="class_id">
+                        <option value="">-- Select a Class --</option>
+                        {% for class_obj in all_classes %}
+                        <option value="{{ class_obj.class_id }}">{{ class_obj.class_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="attendanceType" class="form-label">Attendance Type</label>
+                    <select class="form-select" id="attendanceType" name="type">
+                        <option value="day">Day Attendance (Period 1)</option>
+                        <option value="period">Period Attendance</option>
+                    </select>
+                </div>
+                <div class="col-md-3" id="periodSelectContainer" style="display: none;">
+                    <label for="periodNumber" class="form-label">Period</label>
+                    <select class="form-select" id="periodNumber" name="period">
+                        {% for p in range(1, 9) %}
+                        <option value="{{ p }}">Period {{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary w-100">Go to Mark Attendance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">
+                    <i class="fas fa-clipboard-list text-primary me-2"></i>
+                    My Classes
+                </h4>
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary active" data-filter="all">
+                        All Classes
+                    </button>
+                    <button type="button" class="btn btn-outline-success" data-filter="completed">
+                        Completed
+                    </button>
+                    <button type="button" class="btn btn-outline-warning" data-filter="pending">
+                        Pending
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row" id="classesGrid">
+        {% for summary in class_summaries %}
+        <div class="col-lg-6 col-xl-4 mb-4 class-card" data-status="{{ 'completed' if summary.locked else 'pending' }}">
+            <div class="class-dashboard-card {{ 'completed' if summary.locked else 'pending' }}">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h5 class="card-title mb-1">{{ summary.class.class_name }}</h5>
+                            <p class="card-subtitle text-muted">
+                                <i class="fas fa-users me-1"></i>
+                                {{ summary.total_students }} students
+                            </p>
+                        </div>
+                        <div class="class-status">
+                            {% if summary.locked %}
+                            <span class="badge bg-success">
+                                <i class="fas fa-check-circle me-1"></i>Completed
+                            </span>
+                            {% else %}
+                            <span class="badge bg-warning">
+                                <i class="fas fa-clock me-1"></i>Pending
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="attendance-summary mb-3">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="summary-item text-success">
+                                    <h6>{{ summary.present }}</h6>
+                                    <small>Present</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="summary-item text-danger">
+                                    <h6>{{ summary.absent }}</h6>
+                                    <small>Absent</small>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="summary-item text-warning">
+                                    <h6>{{ summary.late }}</h6>
+                                    <small>Late</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="progress mb-3" style="height: 8px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ summary.percentage }}%"
+                             aria-valuenow="{{ summary.percentage }}" 
+                             aria-valuemin="0" aria-valuemax="100">
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="attendance-percentage">{{ "%.1f"|format(summary.percentage) }}%</span>
+                        <small class="text-muted">Attendance Rate</small>
+                    </div>
+                    
+                    <div class="card-actions">
+                        {% if not summary.locked %}
+                        <a href="{{ url_for('mark_attendance', class_id=summary.class.class_id, date=today, type='day') }}" 
+                           class="btn btn-primary btn-sm w-100 mb-2">
+                            <i class="fas fa-clipboard-check me-1"></i>Mark Day Attendance (Period 1)
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('latecomer_attendance', class_id=summary.class.class_id, date=today, type='day') }}" 
+                           class="btn btn-warning btn-sm w-100 mb-2">
+                            <i class="fas fa-user-clock me-1"></i>Mark Latecomers
+                        </a>
+                        {% endif %}
+                        
+                        <!-- Quick Action Dropdown -->
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary btn-sm w-100 dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown">
+                                <i class="fas fa-cog me-1"></i>More Actions
+                            </button>
+                            <ul class="dropdown-menu">
+                                {% for period in range(1, 9) %}
+                                <li>
+                                    <a class="dropdown-item" 
+                                       href="{{ url_for('mark_attendance', class_id=summary.class.class_id, date=today, type='period', period=period) }}">
+                                        <i class="fas fa-clock me-2"></i>Period {{ period }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if not class_summaries %}
+    <div class="row">
+        <div class="col-12">
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-chalkboard"></i>
+                </div>
+                <h4>No Classes Assigned</h4>
+                <p class="text-muted">You don't have any classes assigned yet. Please contact your administrator.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Update current date display
+function updateCurrentDate() {
+    const now = new Date();
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    };
+    document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', options);
+}
+
+// Filter classes
+document.querySelectorAll('[data-filter]').forEach(button => {
+    button.addEventListener('click', function() {
+        const filter = this.getAttribute('data-filter');
+        
+        // Update active button
+        document.querySelectorAll('[data-filter]').forEach(btn => btn.classList.remove('active'));
+        this.classList.add('active');
+        
+        // Filter cards
+        document.querySelectorAll('.class-card').forEach(card => {
+            const status = card.getAttribute('data-status');
+            
+            if (filter === 'all' || filter === status) {
+                card.style.display = 'block';
+                setTimeout(() => card.classList.add('animate-in'), 10);
+            } else {
+                card.classList.remove('animate-in');
+                setTimeout(() => card.style.display = 'none', 300);
+            }
+        });
+    });
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateCurrentDate();
+    
+    // Add animation classes
+    document.querySelectorAll('.class-card').forEach((card, index) => {
+        setTimeout(() => card.classList.add('animate-in'), index * 100);
+    });
+});
+
+// Add hover effects
+document.querySelectorAll('.class-dashboard-card').forEach(card => {
+    card.addEventListener('mouseenter', function() {
+        this.classList.add('hover-lift');
+    });
+    
+    card.addEventListener('mouseleave', function() {
+        this.classList.remove('hover-lift');
+    });
+});
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const markAttendanceForm = document.getElementById('markAttendanceForm');
+        const classSelect = document.getElementById('classSelect');
+        const attendanceTypeSelect = document.getElementById('attendanceType');
+        const periodSelectContainer = document.getElementById('periodSelectContainer');
+        const periodNumberSelect = document.getElementById('periodNumber');
+
+        function togglePeriodSelect() {
+            if (attendanceTypeSelect.value === 'period') {
+                periodSelectContainer.style.display = 'block';
+            } else {
+                periodSelectContainer.style.display = 'none';
+            }
+        }
+
+        attendanceTypeSelect.addEventListener('change', togglePeriodSelect);
+        togglePeriodSelect(); // Call on load to set initial state
+
+        markAttendanceForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const classId = classSelect.value;
+            
+            if (!classId) {
+                alert('Please select a class before proceeding.');
+                return; // Stop the form submission
+            }
+
+            const type = attendanceTypeSelect.value;
+            // Construct the base URL dynamically in JavaScript
+            let url = `/mark-attendance/${classId}?date={{ today }}&type=${type}`; 
+
+            if (type === 'period') {
+                const period = periodNumberSelect.value;
+                url += `&period=${period}`;
+            }
+            window.location.href = url;
+        });
+    });
+</script>
+{% endblock %}

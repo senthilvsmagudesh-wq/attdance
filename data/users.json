@@ -1,0 +1,42 @@
+[
+  {
+    "user_id": "admin1",
+    "username": "admin",
+    "password": "admin123",
+    "role": "admin",
+    "name": "System Administrator",
+    "assigned_classes": []
+  },
+  {
+    "user_id": "hod1",
+    "username": "hod",
+    "password": "hod123",
+    "role": "hod",
+    "name": "Dr. Sarah Johnson",
+    "assigned_classes": []
+  },
+  {
+    "user_id": "Anandhi",
+    "username": "Anandhi",
+    "password": "Anandhi123",
+    "role": "staff",
+    "name": "Prof.Anandhi",
+    "assigned_classes": ["2nd Year A", "2nd Year B", "2nd Year C", "3rd Year", "Final Year"]
+  },
+  {
+    "user_id": "staff2",
+    "username": "staff2",
+    "password": "staff123",
+    "role": "staff",
+    "name": "Prof. Maria Garcia",
+    "assigned_classes": ["2nd Year C", "3rd Year"]
+  },
+  {
+    "user_id": "Dharshnipriya",
+    "username": "Dharshnipriya",
+    "password": "Dharshnipriya6201",
+    "role": "staff",
+    "name": "Prof.Dharshnipriya",
+    "assigned_classes": ["2nd Year A", "2nd Year B", "2nd Year C", "3rd Year", "Final Year"]
+  }
+]

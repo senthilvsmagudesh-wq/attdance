@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Mark Latecomers - {{ class_obj.class_name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item">
+                                <a href="{{ url_for('staff_dashboard') }}">Dashboard</a>
+                            </li>
+                            <li class="breadcrumb-item active">Mark Latecomers</li>
+                        </ol>
+                    </nav>
+                    <h2 class="mb-1">
+                        <i class="fas fa-user-clock text-warning me-2"></i>
+                        Mark Latecomers
+                    </h2>
+                    <p class="text-muted mb-0">
+                        <strong>{{ class_obj.class_name }}</strong> | 
+                        <i class="fas fa-calendar me-1"></i>{{ date_str }}
+                        {% if period %} | Period {{ period }}{% endif %}
+                    </p>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-info fs-6">
+                        <i class="fas fa-clock me-1"></i>Late Arrivals
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Info Alert -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle fa-2x me-3 text-info"></i>
+                    <div>
+                        <h6 class="alert-heading mb-1">Latecomer Attendance</h6>
+                        <p class="mb-0">Select students who arrived late after the initial attendance was marked. These students will be marked as "Present (Late)".</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if absent_students %}
+    <!-- Latecomer Form -->
+    <form method="POST" action="{{ url_for('submit_latecomer') }}" id="latecomerForm">
+        <input type="hidden" name="class_id" value="{{ class_obj.class_id }}">
+        <input type="hidden" name="date" value="{{ date_str }}">
+        <input type="hidden" name="attendance_type" value="{{ attendance_type }}">
+        {% if period %}<input type="hidden" name="period" value="{{ period }}">{% endif %}
+        
+        <!-- Quick Actions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="quick-actions-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            <i class="fas fa-zap text-warning me-2"></i>Quick Actions
+                        </h5>
+                        <div class="latecomer-counter">
+                            <span class="badge bg-warning text-dark">
+                                Selected: <span id="selectedCount">0</span> / {{ absent_students|length }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-2">
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-warning" id="selectAll">
+                                <i class="fas fa-check-double me-1"></i>Select All
+                            </button>
+                        </div>
+                        <div class="col-auto">
+                            <button type="button" class="btn btn-secondary" id="clearAll">
+                                <i class="fas fa-times me-1"></i>Clear All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Absent Students -->
+        <div class="row">
+            <div class="col-12">
+                <div class="attendance-card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-user-friends text-warning me-2"></i>
+                            Absent Students ({{ absent_students|length }})
+                        </h5>
+                    </div>
+                    
+                    <div class="card-body p-0">
+                        <div class="students-grid">
+                            {% for student in absent_students %}
+                            <div class="student-item latecomer-item" data-student-id="{{ student.student_id }}">
+                                <div class="form-check">
+                                    <input class="form-check-input latecomer-checkbox" 
+                                           type="checkbox" 
+                                           name="latecomers" 
+                                           value="{{ student.student_id }}"
+                                           id="latecomer_{{ student.student_id }}">
+                                    <label class="form-check-label student-label" 
+                                           for="latecomer_{{ student.student_id }}">
+                                        <div class="student-info">
+                                            <div class="student-avatar latecomer-avatar">
+                                                {{ student.name[0].upper() }}
+                                            </div>
+                                            <div class="student-details">
+                                                <div class="student-name">{{ student.name }}</div>
+                                                <div class="student-roll">{{ student.roll_number }}</div>
+                                                <div class="student-status">Initially Absent</div>
+                                            </div>
+                                        </div>
+                                        <div class="status-indicator latecomer-indicator">
+                                            <i class="fas fa-clock"></i>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Submit Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="submit-section">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="final-summary">
+                            <h5 class="mb-1">Summary</h5>
+                            <p class="text-muted mb-0" id="finalSummaryText">
+                                Select students who arrived late
+                            </p>
+                        </div>
+                        <div class="submit-actions">
+                            <a href="{{ url_for('staff_dashboard') }}" class="btn btn-secondary me-2">
+                                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                            </a>
+                            <button type="submit" class="btn btn-warning btn-lg" id="submitBtn">
+                                <i class="fas fa-user-clock me-1"></i>Mark as Late Present
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    
+    {% else %}
+    <!-- No Absent Students -->
+    <div class="row">
+        <div class="col-12">
+            <div class="empty-state">
+                <div class="empty-icon text-success">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h4 class="text-success">Perfect Attendance!</h4>
+                <p class="text-muted mb-3">
+                    All students are already marked as present. No latecomers to mark.
+                </p>
+                <a href="{{ url_for('staff_dashboard') }}" class="btn btn-primary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+class LatecomentMarker {
+    constructor() {
+        this.totalAbsent = {{ absent_students|length }};
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.updateCounts();
+    }
+    
+    bindEvents() {
+        // Quick action buttons
+        document.getElementById('selectAll')?.addEventListener('click', () => this.selectAll());
+        document.getElementById('clearAll')?.addEventListener('click', () => this.clearAll());
+        
+        // Individual checkboxes
+        document.querySelectorAll('.latecomer-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', () => this.updateCounts());
+        });
+        
+        // Form submission
+        document.getElementById('latecomentForm')?.addEventListener('submit', (e) => this.handleSubmit(e));
+    }
+    
+    selectAll() {
+        const checkboxes = document.querySelectorAll('.latecomer-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = true;
+            this.updateItemState(checkbox.closest('.latecomer-item'), true);
+        });
+        this.updateCounts();
+        this.showFeedback('All absent students selected as latecomers');
+    }
+    
+    clearAll() {
+        const checkboxes = document.querySelectorAll('.latecomer-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+            this.updateItemState(checkbox.closest('.latecomer-item'), false);
+        });
+        this.updateCounts();
+        this.showFeedback('Selection cleared');
+    }
+    
+    updateItemState(item, isSelected) {
+        if (isSelected) {
+            item.classList.add('selected');
+        } else {
+            item.classList.remove('selected');
+        }
+    }
+    
+    updateCounts() {
+        const selectedCount = document.querySelectorAll('.latecomer-checkbox:checked').length;
+        
+        // Update counter
+        document.getElementById('selectedCount').textContent = selectedCount;
+        
+        // Update summary text
+        let summaryText = `${selectedCount} students selected as latecomers`;
+        if (selectedCount === 0) {
+            summaryText = 'No latecomers selected';
+        }
+        document.getElementById('finalSummaryText').textContent = summaryText;
+        
+        // Update submit button state
+        const submitBtn = document.getElementById('submitBtn');
+        if (selectedCount > 0) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<i class="fas fa-user-clock me-1"></i>Mark ${selectedCount} as Late Present`;
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-user-clock me-1"></i>Mark as Late Present';
+        }
+        
+        // Update individual items
+        document.querySelectorAll('.latecomer-item').forEach(item => {
+            const checkbox = item.querySelector('.latecomer-checkbox');
+            this.updateItemState(item, checkbox.checked);
+        });
+    }
+    
+    handleSubmit(e) {
+        const selectedCount = document.querySelectorAll('.latecomer-checkbox:checked').length;
+        
+        if (selectedCount === 0) {
+            e.preventDefault();
+            alert('Please select at least one student to mark as latecomer.');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to mark ${selectedCount} student(s) as "Present (Late)"?\n\nThis will update their attendance status.`)) {
+            e.preventDefault();
+            return;
+        }
+        
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+        submitBtn.disabled = true;
+    }
+    
+    showFeedback(message) {
+        // Create a temporary toast-like notification
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.classList.add('show');
+        }, 100);
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => document.body.removeChild(toast), 300);
+        }, 2000);
+    }
+}
+
+// Initialize latecomer marker
+document.addEventListener('DOMContentLoaded', function() {
+    {% if absent_students %}
+    new LatecomentMarker();
+    {% endif %}
+});
+</script>
+{% endblock %}

@@ -1,0 +1,546 @@
+{% extends "base.html" %}
+
+{% block title %}HOD Dashboard - Attendance System{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-chart-line text-primary me-2"></i>
+                        Department Dashboard
+                    </h2>
+                    <p class="text-muted mb-0">Welcome back, {{ user.name }}</p>
+                </div>
+                <div class="text-end">
+                    <p class="mb-0 text-muted">Today's Date</p>
+                    <h5 class="mb-0" id="currentDate">{{ today }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Department Overview Stats -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-primary">
+                <div class="stat-icon">
+                    <i class="fas fa-chalkboard"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ dept_summary.classes|length }}</h3>
+                    <p>Total Classes</p>
+                    <div class="stat-trend">
+                        <small class="text-white-50">Active today</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-success">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ dept_summary.total_students }}</h3>
+                    <p>Total Students</p>
+                    <div class="stat-trend">
+                        <small class="text-white-50">Enrolled</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-info">
+                <div class="stat-icon">
+                    <i class="fas fa-user-check"></i>
+                </div>
+                <div class="stat-content">
+                    <h3>{{ dept_summary.total_present }}</h3>
+                    <p>Present Today</p>
+                    <div class="stat-trend">
+                        <small class="text-white-50">{{ "%.1f"|format(dept_summary.overall_percentage) }}% attendance</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="stat-card bg-warning">
+                <div class="stat-icon">
+                    <i class="fas fa-user-clock"></i>
+                </div>
+                <div class="stat-content">
+                    {% set total_late = dept_summary.classes|sum(attribute='late') %}
+                    <h3>{{ total_late }}</h3>
+                    <p>Latecomers</p>
+                    <div class="stat-trend">
+                        <small class="text-dark">Today</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Attendance View Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-filter mr-1"></i>
+            Attendance View Filters
+        </div>
+        <div class="card-body">
+            <form id="attendanceFilterForm" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="attendanceDate" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="attendanceDate" name="date" value="{{ today }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="attendanceType" class="form-label">Attendance Type</label>
+                    <select class="form-select" id="attendanceType" name="type">
+                        <option value="day" {% if not request.args.get('type') or request.args.get('type') == 'day' %}selected{% endif %}>Day Attendance (Period 1)</option>
+                        <option value="period" {% if request.args.get('type') == 'period' %}selected{% endif %}>Period Attendance</option>
+                    </select>
+                </div>
+                <div class="col-md-2" id="periodSelectContainer" style="display: {% if request.args.get('type') == 'period' %}block{% else %}none{% endif %};">
+                    <label for="periodNumber" class="form-label">Period</label>
+                    <select class="form-select" id="periodNumber" name="period">
+                        {% for p in range(1, 9) %}
+                        <option value="{{ p }}" {% if request.args.get('period')|int == p %}selected{% endif %}>Period {{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Apply Filter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Class Overview Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-chalkboard-teacher mr-1"></i>
+            Class Overview
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Class Name</th>
+                            <th>Total Students</th>
+                            <th>Present Today</th>
+                            <th>Absent Today</th>
+                            <th>Late Today</th>
+                            <th>Marked By</th> <!-- New column header -->
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tfoot>
+                        <tr>
+                            <th>Class Name</th>
+                            <th>Total Students</th>
+                            <th>Present Today</th>
+                            <th>Absent Today</th>
+                            <th>Late Today</th>
+                            <th>Action</th>
+                        </tr>
+                    </tfoot>
+                    <tbody>
+                        {% for class_item in dept_summary.classes %}
+                        <tr>
+                            <td>{{ class_item.class_name }}</td>
+                            <td>{{ class_item.total_students }}</td>
+                            <td>{{ class_item.present }}</td>
+                            <td>{{ class_item.absent }}</td>
+                            <td>{{ class_item.late }}</td>
+                            <td>{{ class_item.marked_by_user }}</td> <!-- New column data -->
+                            <td><a href="{{ url_for('class_details', class_id=class_item.class_id, date=today) }}" class="btn btn-info btn-sm">View</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <i class="fas fa-bolt mr-1"></i>
+            Quick Actions
+        </div>
+        <div class="card-body">
+            <div class="row">
+                
+                
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card bg-success text-white o-hidden h-100">
+                        <div class="card-body">
+                            <div class="card-body-icon">
+                                <i class="fas fa-fw fa-chart-bar"></i>
+                            </div>
+                            <div class="mr-5">Generate Reports</div>
+                        </div>
+                        <a class="card-footer text-white clearfix small z-1" href="{{ url_for('reports') }}">
+                            <span class="float-left">View Details</span>
+                            <span class="float-right">
+                                <i class="fas fa-angle-right"></i>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    
+    
+    <!-- Classes Grid -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">
+                    <i class="fas fa-th-large text-primary me-2"></i>Class Overview
+                </h4>
+                <div class="view-toggle">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-outline-primary active" data-view="grid">
+                            <i class="fas fa-th"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" data-view="list">
+                            <i class="fas fa-list"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row" id="classesGrid">
+        {% for class_summary in dept_summary.classes %}
+        <div class="col-lg-4 col-md-6 mb-4 class-card" 
+             data-percentage="{{ class_summary.percentage }}" 
+             data-status="{{ 'complete' if class_summary.locked else 'incomplete' }}">
+            <div class="class-overview-card {{ 'low-attendance' if class_summary.percentage < 75 else 'good-attendance' if class_summary.percentage >= 90 else 'average-attendance' }}">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="class-info">
+                            <h6 class="class-title">{{ class_summary.class_name }}</h6>
+                            <p class="class-meta">
+                                <i class="fas fa-users me-1"></i>{{ class_summary.total_students }} students
+                            </p>
+                        </div>
+                        <div class="class-actions">
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item" href="{{ url_for('class_details', class_id=class_summary.class_id, date=today) }}">
+                                            <i class="fas fa-eye me-2"></i>View Details
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item export-class" href="#" data-class-id="{{ class_summary.class_id }}">
+                                            <i class="fas fa-download me-2"></i>Export Data
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="percentage-display mb-3">
+                        <div class="percentage-value">{{ "%.0f"|format(class_summary.percentage) }}%</div>
+                        <div class="percentage-label">Attendance</div>
+                    </div>
+                    
+                    <div class="attendance-breakdown">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="stat-mini text-success">
+                                    <div class="number">{{ class_summary.present }}</div>
+                                    <div class="label">Present</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-mini text-danger">
+                                    <div class="number">{{ class_summary.absent }}</div>
+                                    <div class="label">Absent</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="stat-mini text-warning">
+                                    <div class="number">{{ class_summary.late }}</div>
+                                    <div class="label">Late</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="trend-indicator mt-3">
+                        {% if class_summary.trend > 0 %}
+                        <span class="badge bg-success">
+                            <i class="fas fa-arrow-up me-1"></i>+{{ "%.1f"|format(class_summary.trend) }}%
+                        </span>
+                        {% elif class_summary.trend < 0 %}
+                        <span class="badge bg-danger">
+                            <i class="fas fa-arrow-down me-1"></i>{{ "%.1f"|format(class_summary.trend) }}%
+                        </span>
+                        {% else %}
+                        <span class="badge bg-secondary">
+                            <i class="fas fa-minus me-1"></i>No change
+                        </span>
+                        {% endif %}
+                        <small class="text-muted ms-2">vs yesterday</small>
+                    </div>
+                </div>
+                
+                <div class="card-footer">
+                    <a href="{{ url_for('class_details', class_id=class_summary.class_id, date=today) }}" 
+                       class="btn btn-primary btn-sm w-100">
+                        <i class="fas fa-chart-bar me-1"></i>View Analytics
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    {% if not dept_summary.classes %}
+    <div class="row">
+        <div class="col-12">
+            <div class="empty-state">
+                <div class="empty-icon">
+                    <i class="fas fa-chalkboard"></i>
+                </div>
+                <h4>No Classes Found</h4>
+                <p class="text-muted">No classes are available for the selected date.</p>
+                <button type="button" class="btn btn-primary" onclick="location.reload()">
+                    <i class="fas fa-refresh me-1"></i>Refresh Page
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Student Search Modal -->
+<div class="modal fade" id="searchModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-search me-2"></i>Find Student
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="studentSearch" 
+                           placeholder="Enter student name or roll number...">
+                </div>
+                <div id="searchResults"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+
+<script>
+// HOD Dashboard functionality
+class HODDashboard {
+    constructor() {
+        this.init();
+    }
+    
+    init() {
+        this.bindEvents();
+        this.updateDateTime();
+    }
+    
+    
+    
+    bindEvents() {
+        // Date filter
+        document.getElementById('dateFilter').addEventListener('change', (e) => {
+            window.location.href = `{{ url_for('hod_dashboard') }}?date=${e.target.value}`;
+        });
+        
+        // Refresh button
+        document.getElementById('refreshData').addEventListener('click', () => {
+            location.reload();
+        });
+        
+        // Filter options
+        document.querySelectorAll('.filter-option').forEach(option => {
+            option.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.filterClasses(e.target.getAttribute('data-filter'));
+            });
+        });
+        
+        // View toggle
+        document.querySelectorAll('[data-view]').forEach(button => {
+            button.addEventListener('click', (e) => {
+                this.toggleView(e.target.getAttribute('data-view'));
+            });
+        });
+        
+        // Student search
+        document.getElementById('studentSearch').addEventListener('input', (e) => {
+            this.searchStudents(e.target.value);
+        });
+        
+        // Export class data
+        document.querySelectorAll('.export-class').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.exportClassData(e.target.getAttribute('data-class-id'));
+            });
+        });
+    }
+    
+    filterClasses(filter) {
+        const cards = document.querySelectorAll('.class-card');
+        
+        cards.forEach(card => {
+            const percentage = parseFloat(card.getAttribute('data-percentage'));
+            const status = card.getAttribute('data-status');
+            let show = false;
+            
+            switch(filter) {
+                case 'all':
+                    show = true;
+                    break;
+                case 'low':
+                    show = percentage < 75;
+                    break;
+                case 'perfect':
+                    show = percentage === 100;
+                    break;
+                case 'incomplete':
+                    show = status === 'incomplete';
+                    break;
+            }
+            
+            if (show) {
+                card.style.display = 'block';
+                setTimeout(() => card.classList.add('animate-in'), 10);
+            } else {
+                card.classList.remove('animate-in');
+                setTimeout(() => card.style.display = 'none', 300);
+            }
+        });
+    }
+    
+    toggleView(view) {
+        const grid = document.getElementById('classesGrid');
+        const buttons = document.querySelectorAll('[data-view]');
+        
+        buttons.forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-view="${view}"]`).classList.add('active');
+        
+        if (view === 'list') {
+            grid.className = 'row list-view';
+        } else {
+            grid.className = 'row';
+        }
+    }
+    
+    async searchStudents(query) {
+        const resultsDiv = document.getElementById('searchResults');
+        
+        if (query.length < 2) {
+            resultsDiv.innerHTML = '<p class="text-muted">Enter at least 2 characters to search...</p>';
+            return;
+        }
+        
+        try {
+            const response = await fetch(`{{ url_for('search_student') }}?q=${encodeURIComponent(query)}&format=json`);
+            const students = await response.json();
+            
+            if (students.length === 0) {
+                resultsDiv.innerHTML = '<p class="text-muted">No students found matching your search.</p>';
+                return;
+            }
+            
+            let html = '<div class="list-group">';
+            students.forEach(student => {
+                html += `
+                    <a href="{{ url_for('student_details', student_id='') }}${student.student_id}" 
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">${student.name}</h6>
+                                <small class="text-muted">${student.roll_number} • ${student.class_id}</small>
+                            </div>
+                            <i class="fas fa-arrow-right text-muted"></i>
+                        </div>
+                    </a>
+                `;
+            });
+            html += '</div>';
+            
+            resultsDiv.innerHTML = html;
+        } catch (error) {
+            resultsDiv.innerHTML = '<p class="text-danger">Error searching students. Please try again.</p>';
+        }
+    }
+    
+    exportClassData(classId) {
+        // Implementation for exporting class data
+        console.log('Exporting data for class:', classId);
+        // You can implement actual export functionality here
+    }
+    
+    updateDateTime() {
+        const now = new Date();
+        const options = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        };
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('en-US', options);
+    }
+}
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    new HODDashboard();
+    
+    // Add entrance animations
+    document.querySelectorAll('.class-card').forEach((card, index) => {
+        setTimeout(() => card.classList.add('animate-in'), index * 100);
+    });
+});
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const attendanceTypeSelect = document.getElementById('attendanceType');
+        const periodSelectContainer = document.getElementById('periodSelectContainer');
+
+        function togglePeriodSelect() {
+            if (attendanceTypeSelect.value === 'period') {
+                periodSelectContainer.style.display = 'block';
+            } else {
+                periodSelectContainer.style.display = 'none';
+            }
+        }
+
+        attendanceTypeSelect.addEventListener('change', togglePeriodSelect);
+        togglePeriodSelect(); // Call on load to set initial state
+    });
+</script>
+{% endblock %}
