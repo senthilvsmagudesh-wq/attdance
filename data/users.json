@@ -18,7 +18,7 @@
   {
     "user_id": "Anandhi",
     "username": "Anandhi",
-    "password": "Anandhi123",
+    "password": "Anandhi6201",
     "role": "staff",
     "name": "Prof.Anandhi",
     "assigned_classes": ["2nd Year A", "2nd Year B", "2nd Year C", "3rd Year", "Final Year"]
@@ -32,11 +32,11 @@
     "assigned_classes": ["2nd Year C", "3rd Year"]
   },
   {
-    "user_id": "Dharshnipriya",
-    "username": "Dharshnipriya",
-    "password": "Dharshnipriya6201",
+    "user_id": "Dharshinipriya",
+    "username": "Dharshinipriya",
+    "password": "dharshinipriya6201",
     "role": "staff",
-    "name": "Prof.Dharshnipriya",
+    "name": "Prof.Dharshinipriya",
     "assigned_classes": ["2nd Year A", "2nd Year B", "2nd Year C", "3rd Year", "Final Year"]
   }
 ]
